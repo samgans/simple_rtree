@@ -6,10 +6,9 @@ from simple_rtree.nodes import RtreeNode
 
 class Rtree:
 
-    root: Optional[RtreeNode]
-
     def __init__(self, max_entries: int, min_entries: int,
-                 split_method):
+                 split_method, root: Optional[RtreeNode] = None):
+        self.root = root
         self.max_entries = max_entries
         self.min_entries = min_entries
         self.split_method = split_method
@@ -31,12 +30,11 @@ class Rtree:
                 min_enlargement = diff
                 enlarged_mbr = candidate_enlarged
                 min_enlarged_idx = idx
-
         return (enlarged_mbr, min_enlarged_idx)  # type: ignore
 
     def _perform_node_split(self, node: RtreeNode) -> Tuple[RtreeNode, RtreeNode]:
         first_node_info, second_node_info = (
-            self.split_method.split(node.children)
+            self.split_method.split(node.children, min_per_node=self.min_entries)
         )
         node.mbr, node.children = first_node_info
         new_node = RtreeNode(
@@ -63,6 +61,8 @@ class Rtree:
         current = node
         traversed_path = []
 
+        current.mbr = current.mbr.union(node_to_insert.mbr)
+
         while not current.level == node_to_insert.level:
             enlarged_mbr, target_node_idx = self._find_min_enlarged(
                 node_to_insert.mbr,
@@ -83,6 +83,8 @@ class Rtree:
                          geometry: RtreeGeometry) -> Optional[Tuple[RtreeNode, RtreeNode]]:
         current = node
         traversed_path = []
+
+        current.mbr = current.mbr.union(geometry.mbr)
 
         while not current.is_leaf:
             enlarged_mbr, target_node_idx = self._find_min_enlarged(
@@ -106,20 +108,51 @@ class Rtree:
         else:
             # mypy can't infer that else == RtreeNode
             res = self._insert_node(node=node, node_to_insert=obj)  # type: ignore
+        return res
 
-        if res is not None:
-            new_node_a, new_node_b = res
-            new_mbr = new_node_a.find_mbr_union(new_node_b)
-            new_level = new_node_a.level + 1
-            self.root = RtreeNode(
-                mbr=new_mbr,
-                children=[new_node_a, new_node_b],
-                level=new_level
-            )
+    def _stringify_tree(self, tree_obj: Union[RtreeGeometry, RtreeNode],
+                        prefix: str, separator: str) -> str:
+        base_str = f"{prefix}{separator}{tree_obj}\n"
+
+        if type(tree_obj) == RtreeNode:
+            if tree_obj.level == 0:
+                separator = "└── "
+            else:
+                separator = "├── "
+
+            for child in tree_obj.children:
+                base_str += self._stringify_tree(
+                    tree_obj=child,
+                    prefix=f"{prefix}│   ",
+                    separator=separator
+                )
+        return base_str
 
     def insert(self, geometry: RtreeGeometry) -> None:
         if self.root is None:
             self.root = RtreeNode(mbr=geometry.mbr,
                                   children=[geometry], level=0)
         else:
-            self._insert(self.root, geometry)
+            res = self._insert(self.root, geometry)
+
+            if res is not None:  # Create new root
+                new_node_a, new_node_b = res
+                new_mbr = new_node_a.find_mbr_union(new_node_b)
+                new_level = new_node_a.level + 1
+                self.root = RtreeNode(
+                    mbr=new_mbr,
+                    children=[new_node_a, new_node_b],
+                    level=new_level
+                )
+
+    def print_tree(self) -> None:
+        if self.root is not None:
+            print(
+                self._stringify_tree(
+                    tree_obj=self.root,
+                    prefix="",
+                    separator=""
+                )
+            )
+        else:
+            print()
