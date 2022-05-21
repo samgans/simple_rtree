@@ -16,6 +16,9 @@ class RtreeNode(Generic[MBRBounded]):
         self.level = level
         self.is_leaf = (level == 0)
 
+    def __str__(self):
+        return f"Node with MBR: {self.mbr.bounds}"
+
     def add_child(self, child: MBRBounded) -> None:
         self.children.append(child)
         self.mbr = self.mbr.union(child.mbr)
