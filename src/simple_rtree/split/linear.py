@@ -26,7 +26,10 @@ class DimensionStatistics:
 
     @property
     def norm_distance(self):
-        return abs(self.max_low - self.min_high) / self.width
+        width = self.width
+        if width == 0:
+            width = 1
+        return abs(self.max_low - self.min_high) / width
 
     @classmethod
     def compute_statistics(
@@ -45,10 +48,10 @@ class DimensionStatistics:
             if (dim_stats.max_high is None) or (high > dim_stats.max_high):
                 dim_stats.max_high = high
 
-            if (dim_stats.max_low is None) or (low > dim_stats.max_low):
+            if (dim_stats.max_low is None) or (low < dim_stats.max_low):
                 dim_stats.max_low = low
                 dim_stats.max_low_idx = idx
-            elif (dim_stats.min_high is None) or (high > dim_stats.min_high):
+            elif (dim_stats.min_high is None) or (high < dim_stats.min_high):
                 dim_stats.min_high = high
                 dim_stats.min_high_idx = idx
         return dim_stats
@@ -73,8 +76,10 @@ class RtreeLinearSplit(RtreeSplitMethod):
             stat_x if stat_x.norm_distance > stat_y.norm_distance else stat_y
         )
         f1, f2 = dim_for_use.max_low_idx, dim_for_use.min_high_idx
+
+        # seed 2 always has the bigger index
         if f1 != f2:
-            return (f1, f2)
+            return (f1, f2) if f1 < f2 else (f2, f1)
         elif f1 == 0:
             return (0, 1)
         else:
@@ -89,7 +94,7 @@ class RtreeLinearSplit(RtreeSplitMethod):
         second_mbr = seed_2.mbr
 
         group_1, group_2 = [seed_1], [seed_2]
-        while len(to_distribute) > min_per_node:
+        while len(to_distribute) + 1 != min_per_node:
             entry = to_distribute.pop()
             first_mbr = first_mbr.union(entry.mbr)
             group_1.append(entry)
@@ -105,7 +110,7 @@ class RtreeLinearSplit(RtreeSplitMethod):
     def split(cls, to_split: NodeChildren,
               min_per_node: int) -> Tuple[NodeInfo, NodeInfo]:
         seed_1_idx, seed_2_idx = cls._pick_seeds(source=to_split)
-        seed_1, seed_2 = to_split.remove(seed_1_idx), to_split.remove(seed_2_idx)
+        seed_2, seed_1 = to_split.pop(seed_2_idx), to_split.pop(seed_1_idx)
         return cls._distribute_children(seed_1=seed_1, seed_2=seed_2,
                                         to_distribute=to_split,
                                         min_per_node=min_per_node)
