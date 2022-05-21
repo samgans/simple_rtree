@@ -30,3 +30,6 @@ class RtreeGeometry:
         self.geometry = geometry
         self.mbr = mbr
         self.attributes = attributes
+
+    def __str__(self):
+        return f"Geometry with MBR: {self.mbr.bounds}"
