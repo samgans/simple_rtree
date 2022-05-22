@@ -1,4 +1,4 @@
-from typing import Generic, List, TypeVar, Union
+from typing import Generic, List, TypeVar
 
 from simple_rtree.geometry import RtreeBoundingRectangle, RtreeGeometry
 
