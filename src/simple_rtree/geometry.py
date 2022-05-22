@@ -1,13 +1,18 @@
+import abc
 from typing import Any, Dict, Optional, Tuple
 
 from shapely.geometry import Polygon, box
 from shapely.geometry.base import BaseGeometry
 
 
-class RtreeBoundingRectangle:
+class RtreeSpatial(abc.ABC):
+    """
+    Interface representing any spatial object in the index.
 
-    def __init__(self, geometry: Polygon):
-        self.geometry = geometry
+    Has basic spatial objects' properties and predicates defined.
+    """
+
+    geometry: BaseGeometry
 
     @property
     def area(self) -> float:
@@ -17,13 +22,32 @@ class RtreeBoundingRectangle:
     def bounds(self) -> Tuple[float, float, float, float]:
         return self.geometry.bounds
 
+    def contains(self, other: "RtreeSpatial") -> bool:
+        return self.geometry.contains(other.geometry)
+
+    def intersects(self, other: "RtreeSpatial") -> bool:
+        return self.geometry.intersects(other.geometry)
+
+    def covers(self, other: "RtreeSpatial") -> bool:
+        return self.geometry.covers(other.geometry)
+
+
+class RtreeBoundingRectangle(RtreeSpatial):
+
+    def __init__(self, geometry: Polygon):
+        self.geometry = geometry
+
     def union(self, mbr: "RtreeBoundingRectangle") -> "RtreeBoundingRectangle":
-        return RtreeBoundingRectangle(
-            box(*self.geometry.union(mbr.geometry).bounds)
-        )
+        unioned = self.geometry.union(mbr.geometry)
+
+        # unioning two the same zero-area polygons results in empty polygon
+        if unioned.is_empty:
+            return self
+        else:
+            return RtreeBoundingRectangle(box(*unioned.bounds))
 
 
-class RtreeGeometry:
+class RtreeGeometry(RtreeSpatial):
 
     def __init__(self, geometry: BaseGeometry, mbr: RtreeBoundingRectangle,
                  attributes: Optional[Dict[str, Any]] = None):
