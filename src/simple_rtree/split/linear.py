@@ -48,10 +48,11 @@ class DimensionStatistics:
             if (dim_stats.max_high is None) or (high > dim_stats.max_high):
                 dim_stats.max_high = high
 
-            if (dim_stats.max_low is None) or (low < dim_stats.max_low):
+            if (dim_stats.max_low is None) or (low > dim_stats.max_low):
                 dim_stats.max_low = low
                 dim_stats.max_low_idx = idx
-            elif (dim_stats.min_high is None) or (high < dim_stats.min_high):
+
+            if (dim_stats.min_high is None) or (high < dim_stats.min_high):
                 dim_stats.min_high = high
                 dim_stats.min_high_idx = idx
         return dim_stats
