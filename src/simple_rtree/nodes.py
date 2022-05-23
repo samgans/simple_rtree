@@ -14,7 +14,10 @@ class RtreeNode(Generic[MBRBounded]):
         self.children: List[MBRBounded] = children
         self.mbr = mbr
         self.level = level
-        self.is_leaf = (level == 0)
+
+    @property
+    def is_leaf(self):
+        return (self.level == 0)
 
     def __str__(self):
         return f"Node with MBR: {self.mbr.bounds} at level {self.level}"
