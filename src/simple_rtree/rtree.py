@@ -188,7 +188,13 @@ class Rtree:
             for idx, child in enumerate(node.children):
                 if rm_range.covers(child.mbr):
                     to_drop.append(idx)
-                    dropped.extend(child.children)
+                    dropped.extend(
+                        self._range_search(
+                            node=child,
+                            search_range=child.mbr,
+                            return_all=True
+                        )
+                    )
                 elif rm_range.intersects(child.mbr):
                     new_dropped, new_to_reinsert = self._range_delete(
                         node=child,
